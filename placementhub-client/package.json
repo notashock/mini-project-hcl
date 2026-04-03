@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -16,6 +16,8 @@
     "react-dom": "^19.2.4",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.2",
+    "sockjs-client": "^1.6.1",
+    "stompjs": "^2.3.3",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

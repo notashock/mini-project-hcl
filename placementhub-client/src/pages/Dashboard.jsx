@@ -1,69 +1,94 @@
-// src/pages/Dashboard.jsx
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
     const { user, logout } = useContext(AuthContext);
+    const navigate = useNavigate();
     const [sessions, setSessions] = useState([]);
     const [sessionTitle, setSessionTitle] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    // 1. Fetch Active Sessions
     const fetchSessions = async () => {
         try {
             const response = await api.get('/sessions/active');
             setSessions(response.data);
         } catch (error) {
-            toast.error('Failed to load active sessions');
+            if (error.response?.status !== 401) {
+                toast.error('Failed to load active sessions');
+            }
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Run once when the component mounts
     useEffect(() => {
         fetchSessions();
     }, []);
 
-    // 2. Create a New Session
     const handleCreateSession = async (e) => {
         e.preventDefault();
         if (!sessionTitle.trim()) return;
 
         try {
             const response = await api.post('/sessions/create', { sessionTitle });
-            toast.success(response.data.message);
-            setSessionTitle(''); // Clear the input
-            fetchSessions(); // Refresh the list to show the new session
+            toast.success(`Session Created! Code: ${response.data.joinCode}`, { duration: 5000 });
+            setSessionTitle(''); 
+            fetchSessions(); 
         } catch (error) {
             toast.error(error.response?.data?.error || 'Failed to create session');
         }
     };
 
-    // 3. Delete an Existing Session
     const handleDeleteSession = async (sessionId) => {
         try {
             const response = await api.delete(`/sessions/end/${sessionId}`);
             toast.success(response.data);
-            fetchSessions(); // Refresh the list
+            fetchSessions(); 
         } catch (error) {
-            // This will catch our 403 Forbidden error from the backend if someone tries to hack it
             toast.error(error.response?.data || 'Failed to delete session');
         }
     };
 
+    const handleJoinSession = async (session) => {
+        let code = '';
+        
+        // Gatekeeper: Trainer uses their own code automatically, students are prompted
+        if (user?.username === session.trainerUsername) {
+            code = session.joinCode; 
+        } else {
+            code = window.prompt(`Enter the 6-digit Join Code for '${session.sessionTitle}':`);
+            if (!code) return; 
+        }
+
+        try {
+            await api.post(`/sessions/join/${session.sessionId}`, { joinCode: code });
+            
+            // Navigate and pass the state to the SessionRoom
+            navigate(`/session/${session.sessionId}`, { 
+                state: { joinCode: session.joinCode, trainer: session.trainerUsername } 
+            });
+        } catch (error) {
+            toast.error(error.response?.data || 'Incorrect Join Code');
+        }
+    };
+
+    const handleLogout = () => {
+        logout(navigate);
+    };
+
     return (
         <div className="min-h-screen bg-gray-900 text-white p-8">
-            {/* Header Section */}
             <div className="flex justify-between items-center mb-10 pb-4 border-b border-gray-700">
                 <div>
                     <h1 className="text-3xl font-bold text-blue-400">Placement Hub</h1>
                     <p className="text-gray-400 text-sm mt-1">Logged in as: <span className="text-green-400 font-semibold">{user?.username}</span></p>
                 </div>
+                
                 <button 
-                    onClick={logout} 
+                    onClick={handleLogout} 
                     className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
                 >
                     Logout
@@ -71,7 +96,6 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Left Column: Create Session Form */}
                 <div className="md:col-span-1">
                     <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
                         <h2 className="text-xl font-bold mb-4 text-gray-200">Start New Session</h2>
@@ -97,7 +121,6 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Right Column: Active Sessions List */}
                 <div className="md:col-span-2">
                     <h2 className="text-2xl font-bold mb-4 text-gray-200">Live Sessions</h2>
                     
@@ -116,14 +139,23 @@ export default function Dashboard() {
                                         <p className="text-sm text-gray-400 mt-1">
                                             Trainer: <span className="text-gray-200">{session.trainerUsername}</span>
                                         </p>
+                                        
+                                        {/* Display code only to the trainer */}
+                                        {user?.username === session.trainerUsername && (
+                                            <p className="text-sm text-green-400 mt-3 font-mono bg-gray-900 inline-block px-2 py-1 rounded border border-green-800">
+                                                Code: <span className="font-bold tracking-widest">{session.joinCode}</span>
+                                            </p>
+                                        )}
                                     </div>
                                     
                                     <div className="mt-6 flex justify-between items-center gap-2">
-                                        <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-sm font-semibold transition">
+                                        <button 
+                                            onClick={() => handleJoinSession(session)}
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-sm font-semibold transition"
+                                        >
                                             Join Session
                                         </button>
                                         
-                                        {/* Security UI: Only show delete if the logged-in user is the creator */}
                                         {user?.username === session.trainerUsername && (
                                             <button 
                                                 onClick={() => handleDeleteSession(session.sessionId)}

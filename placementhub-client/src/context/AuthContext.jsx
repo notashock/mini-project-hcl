@@ -30,8 +30,6 @@ export const AuthProvider = ({ children }) => {
             setUser(userData);
             
             toast.success('Login successful!');
-            
-            // Strictly routing to this project's dashboard
             navigate('/dashboard'); 
         } catch (error) {
             toast.error(error.response?.data?.message || 'Login failed');
@@ -47,11 +45,25 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-        toast.success('Logged out successfully');
+    // UPDATED LOGOUT FUNCTION
+    const logout = async (navigate) => {
+        try {
+            // Tell the backend to blacklist this token
+            await api.post('/auth/logout');
+        } catch (error) {
+            console.error("Backend logout failed, proceeding with local logout.");
+        } finally {
+            // Wipe local storage regardless of backend response
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+            toast.success('Logged out successfully');
+            
+            // Navigate back to login screen
+            if (navigate) {
+                navigate('/login');
+            }
+        }
     };
 
     return (

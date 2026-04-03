@@ -1,9 +1,9 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashbaord'; // Import the new component
+import Dashboard from './pages/Dashboard';
+import SessionRoom from './pages/SessionRoom';
 
 function App() {
   return (
@@ -13,9 +13,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
-          
-          {/* Replace the inline div with your actual component */}
-          <Route path="/dashboard" element={<Dashboard />} /> 
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/session/:sessionId" element={<SessionRoom />} /> 
         </Routes>
       </AuthProvider>
     </Router>

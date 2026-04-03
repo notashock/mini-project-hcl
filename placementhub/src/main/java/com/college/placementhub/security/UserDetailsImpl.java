@@ -17,8 +17,8 @@ import java.util.stream.Collectors;
 @Data
 @AllArgsConstructor
 public class UserDetailsImpl implements UserDetails {
-    private String username;
     private String id;
+    private String username;
     private String email;
 
     @JsonIgnore

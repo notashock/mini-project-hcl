@@ -7,5 +7,6 @@ import lombok.Data;
 @AllArgsConstructor
 public class SessionResponse {
     private String sessionId;
+    private String joinCode;
     private String sessionTitle;
 }

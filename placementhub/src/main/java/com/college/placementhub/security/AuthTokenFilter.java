@@ -1,5 +1,6 @@
 package com.college.placementhub.security;
 
+import com.college.placementhub.service.BlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,11 +22,18 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     private JwtUtils jwtUtils;
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
+    @Autowired
+    private BlacklistService blacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain filterChain) throws ServletException, IOException {
         try{
             String jwt = parseJwt(req);
+            if(jwt != null && blacklistService.isBlacklisted(jwt)){
+                System.out.println("Token is blacklisted.");
+                filterChain.doFilter(req, res);
+                return;
+            }
             if(jwt != null && jwtUtils.validateJwtToken(jwt)){
                 String username = jwtUtils.getUsernameFromJwtToken(jwt);
 

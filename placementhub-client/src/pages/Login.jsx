@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect, useCallback } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api'; // <-- Imported your custom Axios instance
 
 export default function Login() {
     // Form toggle state
@@ -16,7 +17,7 @@ export default function Login() {
     const [isWaking, setIsWaking] = useState(true);
     const [serverError, setServerError] = useState(false);
     
-    // NEW: Submission Lock State
+    // Submission Lock State
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const { login, register } = useContext(AuthContext);
@@ -30,8 +31,8 @@ export default function Login() {
         
         try {
             console.log("Sending wake-up ping to server...");
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || ''; 
-            await fetch(`${baseUrl}api/public/health`);
+            // Using your custom API instance
+            await api.get('/public/health');
             
             console.log("Server is awake and ready!");
             setIsServerReady(true);
@@ -56,7 +57,7 @@ export default function Login() {
         // Gatekeeper: Prevent form submission while server is waking or already submitting
         if (isWaking || isSubmitting) return;
         
-        // Lock the form!
+        // Lock the form
         setIsSubmitting(true);
         
         try {

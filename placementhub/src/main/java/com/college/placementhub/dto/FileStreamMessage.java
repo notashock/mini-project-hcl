@@ -1,16 +1,13 @@
 package com.college.placementhub.dto;
 
-import lombok.Data;
-
-@Data
-public class FileStreamMessage {
-    private String type;
-    private String fileId;
-    private String fileName;
-    private String fileType;
-    private long fileSize;
-    private String sender;
-    private int totalChunks;
-    private int chunkIndex;
-    private String data;
-}
+public record FileStreamMessage(
+        String type,
+        String fileId,
+        String fileName,
+        String fileType,
+        long fileSize,
+        String sender,
+        int totalChunks,
+        int chunkIndex,
+        String data
+){}

@@ -2,22 +2,25 @@ package com.college.placementhub.service;
 
 import com.college.placementhub.dto.ChatMessage;
 import com.college.placementhub.model.ActiveSession;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j // Asynchronous, highly optimized logging
 @Service
+@RequiredArgsConstructor // Native constructor injection (No reflection)
 public class SessionService {
-    @Autowired
-    private SimpMessagingTemplate template;
+
+    private final SimpMessagingTemplate template;
     private final Map<String, ActiveSession> liveSessions = new ConcurrentHashMap<>();
-    public ActiveSession createSession(String trainerUsername, String sessionTitle){
+
+    public ActiveSession createSession(String trainerUsername, String sessionTitle) {
         String sessionId = UUID.randomUUID().toString();
         String joinCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
 
@@ -29,65 +32,74 @@ public class SessionService {
                 System.currentTimeMillis()
         );
         liveSessions.put(sessionId, newSession);
-        System.out.println("Universal Live Session Created: " + sessionId + " | Title: " + sessionTitle + " | Code: " + joinCode);
+
+        // Parameterized logging saves memory by avoiding String concatenation
+        log.info("Live Session Created: {} | Title: {} | Code: {}", sessionId, sessionTitle, joinCode);
         return newSession;
     }
-    public boolean joinSession(String sessionId, String username, String providedCode){
+
+    public boolean joinSession(String sessionId, String username, String providedCode) {
         ActiveSession session = liveSessions.get(sessionId);
-        if(session == null){
+        if (session == null) {
             return false;
         }
-        if(!session.getJoinCode().equals(providedCode)){
-            throw new IllegalArgumentException("Invalid joining code. access denied.");
+        if (!session.getJoinCode().equals(providedCode)) {
+            throw new IllegalArgumentException("Invalid joining code. Access denied.");
         }
-        session.getParticipants().add(username);
-        String destination = "/topic/session/" + sessionId + "/presence";
-        String message = username + " has joined the session!";
 
-        template.convertAndSend(destination, message);
-        System.out.println(username + " has joined the session: " + sessionId);
+        session.getParticipants().add(username);
+        template.convertAndSend("/topic/session/" + sessionId + "/presence", username + " has joined the session!");
+
+        log.info("{} has joined the session: {}", username, sessionId);
         return true;
     }
-    public boolean leaveSession(String sessionId, String username){
-        ActiveSession session = liveSessions.get(sessionId);
-        if(session != null && session.getParticipants().contains(username)){
-            session.getParticipants().remove(username);
-            String message = username + " has left the session.";
-            template.convertAndSend("/topic/session/" + sessionId + "/presence", message);
 
-            System.out.println(username + " has left the session: " + sessionId);
+    public boolean leaveSession(String sessionId, String username) {
+        ActiveSession session = liveSessions.get(sessionId);
+        if (session != null && session.getParticipants().contains(username)) {
+            session.getParticipants().remove(username);
+            template.convertAndSend("/topic/session/" + sessionId + "/presence", username + " has left the session.");
+
+            log.info("{} has left the session: {}", username, sessionId);
             return true;
         }
         return false;
     }
+
     public void broadcastChatMessage(String sessionId, String sender, String content) {
-        if(isValidSession(sessionId)){
+        if (isValidSession(sessionId)) {
             ChatMessage msg = new ChatMessage(sender, content, System.currentTimeMillis());
             template.convertAndSend("/topic/session/" + sessionId + "/chat", msg);
-        }else {
+        } else {
             throw new IllegalArgumentException("Cannot send message. Session has ended.");
         }
     }
-    public boolean isValidSession(String sessionId){
+
+    public boolean isValidSession(String sessionId) {
         return liveSessions.containsKey(sessionId);
     }
-    public boolean endSession(String sessionId, String reqUsername){
+
+    public boolean endSession(String sessionId, String reqUsername) {
         ActiveSession session = liveSessions.get(sessionId);
-        if(session == null){
+        if (session == null) {
             throw new IllegalArgumentException("Session Not Found or already terminated");
         }
-        if(!session.getTrainerUsername().equals(reqUsername)){
-            System.out.println("Unauthorized deletion attempted by " + reqUsername);
+        if (!session.getTrainerUsername().equals(reqUsername)) {
+            log.warn("Unauthorized deletion attempted by {}", reqUsername);
             return false;
         }
+
         template.convertAndSend("/topic/session/" + sessionId + "/presence", "SESSION_TERMINATED");
         liveSessions.remove(sessionId);
-        System.out.println("Live Session Ended: "+sessionId+" by " + reqUsername);
+
+        log.info("Live Session Ended: {} by {}", sessionId, reqUsername);
         return true;
     }
-    public ActiveSession getSessionDetails(String sessionId){
+
+    public ActiveSession getSessionDetails(String sessionId) {
         return liveSessions.get(sessionId);
     }
+
     public Collection<ActiveSession> getAllActiveSessions() {
         return liveSessions.values();
     }
